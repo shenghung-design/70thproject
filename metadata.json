@@ -1,0 +1,6 @@
+{
+  "name": "勝宏集團70週年專案排程表",
+  "description": "勝宏集團70週年專案排程與禮盒開發進度檢核系統，支援多專案管理、互動式禮盒打點標註、Notion風格排程表、聯絡資訊卡片及自動歷史紀錄。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

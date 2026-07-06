@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans TC", "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: "Noto Serif TC", "Playfair Display", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg-paper: #F8FAFC;
+  --color-text-main: #1E293B;
+  --color-wood-light: #5E8075;
+  --color-wood-dark: #1E3F35;
+  --color-line: #D1D5DB;
+  --color-accent-green: #5E8075;
+  --color-accent-blue: #E97D45;
+  
+  --color-seesaw-yellow: #FAF2D3;
+  --color-seesaw-orange: #E97D45;
+  --color-seesaw-green-light: #E6ECE9;
+  --color-seesaw-orange-light: #FFF3EC;
+}
+
+/* Base style smoothing */
+body {
+  background-color: #F8FAFC;
+  color: #1E293B;
+  font-feature-settings: "lnum" 1, "pnum" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars to match Japanese minimal aesthetic - thickened for usability */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF9F6;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5E8075;
+  border: 2.5px solid #FAF9F6;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1E3F35;
+}
+
+/* Custom micro-animations */
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-spin-reverse:hover {
+  animation: spin-reverse 2s linear infinite;
+}
+
+/* Premium PDF / Print optimization */
+@media print {
+  /* Hide all interactive elements and sidebars during print */
+  header, 
+  footer, 
+  button, 
+  input[type="file"],
+  .lg:col-span-4, /* Hide stats widget panel */
+  #manage-option-library-btn,
+  #add-schedule-row-btn,
+  #delete-hotspot-btn,
+  th:last-child, /* Hide last column (Actions) */
+  td:last-child {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Expand main grid to full page width */
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .grid {
+    display: block !important;
+  }
+
+  .lg:col-span-8 {
+    width: 100% !important;
+    margin-bottom: 2rem !important;
+  }
+
+  /* Make sure tables are printed clearly with all data */
+  table {
+    min-width: 100% !important;
+    width: 100% !important;
+    border: 1px solid #4A3F35 !important;
+  }
+
+  th, td {
+    border: 1px solid #C4A47C !important;
+    padding: 6px 8px !important;
+    color: black !important;
+  }
+
+  /* Keep completed items text clear on black-and-white printing */
+  .line-through {
+    text-decoration: line-through !important;
+    opacity: 0.6 !important;
+  }
+
+  select, input[type="date"], input[type="text"] {
+    background: transparent !important;
+    border: none !important;
+    color: black !important;
+    padding: 0 !important;
+    appearance: none !important;
+    font-size: 11px !important;
+  }
+}

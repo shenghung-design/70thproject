@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "Represents a separate tabbed scheduling project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the project." },
+        "name": { "type": "string", "description": "The name/title of the project." },
+        "imageSrc": { "type": "string", "description": "Base64 string or URL of the schematic diagram." },
+        "templateType": { "type": "string", "enum": ["diagram", "checklist"], "description": "Whether this project has a diagram/schematic visualizer." },
+        "createdAt": { "type": "integer", "description": "Epoch timestamp of creation." }
+      },
+      "required": ["id", "name", "imageSrc", "createdAt"]
+    },
+    "Hotspot": {
+      "title": "Hotspot",
+      "description": "An interactive coordinate point mapped onto the project schematic diagram.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the hotspot." },
+        "projectId": { "type": "string", "description": "Parent project ID." },
+        "code": { "type": "string", "description": "Unique hotspot code (e.g., A1, B1)." },
+        "name": { "type": "string", "description": "The name of the component (e.g., 外盒包裝)." },
+        "x": { "type": "number", "description": "X coordinate percentage (0-100)." },
+        "y": { "type": "number", "description": "Y coordinate percentage (0-100)." }
+      },
+      "required": ["id", "projectId", "code", "name", "x", "y"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "Vendor contact information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier." },
+        "name": { "type": "string", "description": "Contact person name." },
+        "companyPhone": { "type": "string", "description": "Company telephone number." },
+        "mobile": { "type": "string", "description": "Mobile phone number." },
+        "lineId": { "type": "string", "description": "LINE ID for quick contacting." }
+      },
+      "required": ["id", "name", "companyPhone", "mobile", "lineId"]
+    },
+    "ScheduleItem": {
+      "title": "ScheduleItem",
+      "description": "A progress check row inside the schedule grid.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the row item." },
+        "projectId": { "type": "string", "description": "Parent project ID." },
+        "hotspotId": { "type": "string", "description": "Referenced hotspot ID, if linked." },
+        "code": { "type": "string", "description": "Associated code (e.g., A1)." },
+        "name": { "type": "string", "description": "Name of the item." },
+        "department": { "type": "string", "description": "The responsible department." },
+        "owner": { "type": "string", "description": "Responsible person name." },
+        "vendor": { "type": "string", "description": "Assigned vendor name." },
+        "contactId": { "type": "string", "description": "Linked contact card ID." },
+        "proofDeadline": { "type": "string", "description": "Proofing deadline date." },
+        "completionDate": { "type": "string", "description": "Target completion date." },
+        "isCompleted": { "type": "boolean", "description": "Indicates if this task has been completed." },
+        "status": { "type": "string", "description": "Dynamic task progress status." }
+      },
+      "required": ["id", "projectId", "code", "name", "department", "owner", "vendor", "proofDeadline", "completionDate", "isCompleted"]
+    },
+    "OptionLibrary": {
+      "title": "OptionLibrary",
+      "description": "Dropdown select libraries.",
+      "type": "object",
+      "properties": {
+        "departments": { "type": "array", "description": "Array of department names." },
+        "owners": { "type": "array", "description": "Array of owner names." },
+        "vendors": { "type": "array", "description": "Array of vendor names." },
+        "statuses": { "type": "array", "description": "Array of custom task status names." }
+      },
+      "required": ["departments", "owners", "vendors", "statuses"]
+    },
+    "HistoryLog": {
+      "title": "HistoryLog",
+      "description": "Audit trail log of all additions, modifications, and deletions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique log identifier." },
+        "projectId": { "type": "string", "description": "Project ID." },
+        "timestamp": { "type": "integer", "description": "Log creation epoch time." },
+        "userName": { "type": "string", "description": "Who performed the action." },
+        "actionType": { "type": "string", "description": "Type of operation (create, update, delete, restore)." },
+        "entityType": { "type": "string", "description": "Entity category." },
+        "description": { "type": "string", "description": "Readable action details." }
+      },
+      "required": ["id", "projectId", "timestamp", "userName", "actionType", "entityType", "description"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "The collection of separate scheduling projects."
+    },
+    "/projects/{projectId}/hotspots/{hotspotId}": {
+      "schema": "Hotspot",
+      "description": "Hotspot coordinates belonging to a specific project."
+    },
+    "/projects/{projectId}/items/{itemId}": {
+      "schema": "ScheduleItem",
+      "description": "The schedule list belonging to a specific project."
+    },
+    "/contacts/{contactId}": {
+      "schema": "Contact",
+      "description": "Universal directory of contact people."
+    },
+    "/options/{optionId}": {
+      "schema": "OptionLibrary",
+      "description": "Global libraries of options."
+    },
+    "/logs/{logId}": {
+      "schema": "HistoryLog",
+      "description": "Audit trail of actions."
+    }
+  }
+}

@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data);
+      allow update: if isSignedIn() && isValidProject(request.resource.data) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'imageSrc', 'templateType'])
+      );
+      allow delete: if isSignedIn();
+
+      // Hotspots subcollection
+      match /hotspots/{hotspotId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isValidId(hotspotId) && isValidHotspot(request.resource.data) && request.resource.data.projectId == projectId;
+        allow update: if isSignedIn() && isValidHotspot(request.resource.data) && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['code', 'name', 'x', 'y'])
+        );
+        allow delete: if isSignedIn();
+      }
+
+      // Schedule Items subcollection
+      match /items/{itemId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isValidId(itemId) && isValidScheduleItem(request.resource.data) && request.resource.data.projectId == projectId;
+        allow update: if isSignedIn() && isValidScheduleItem(request.resource.data) && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'code', 'name', 'department', 'owner', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted', 'status'
+          ])
+        );
+        allow delete: if isSignedIn();
+      }
+    }
+
+    // Contacts collection
+    match /contacts/{contactId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(contactId) && isValidContact(request.resource.data);
+      allow update: if isSignedIn() && isValidContact(request.resource.data) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'companyPhone', 'mobile', 'lineId'])
+      );
+      allow delete: if isSignedIn();
+    }
+
+    // Options library (dynamic dropdown lists)
+    match /options/{optionId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(optionId) && isValidOptionLibrary(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    // History Logs
+    match /logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidHistoryLog(request.resource.data);
+      allow update, delete: if false; // Logs are write-once, immutable
+    }
+
+    // Entity validation helpers
+    function isValidProject(data) {
+      return data.keys().hasAll(['id', 'name', 'imageSrc', 'createdAt'])
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAll(['templateType'])))
+        && data.id is string
+        && data.name is string && data.name.size() <= 200
+        && data.imageSrc is string && data.imageSrc.size() <= 10000000
+        && data.createdAt is int
+        && (!data.keys().hasAll(['templateType']) || (data.templateType is string && (data.templateType == 'diagram' || data.templateType == 'checklist')));
+    }
+
+    function isValidHotspot(data) {
+      return data.keys().hasAll(['id', 'projectId', 'code', 'name', 'x', 'y'])
+        && data.keys().size() == 6
+        && data.id is string
+        && data.projectId is string
+        && data.code is string && data.code.size() <= 10
+        && data.name is string && data.name.size() <= 200
+        && (data.x is float || data.x is int) && data.x >= 0 && data.x <= 100
+        && (data.y is float || data.y is int) && data.y >= 0 && data.y <= 100;
+    }
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['id', 'name', 'companyPhone', 'mobile', 'lineId'])
+        && data.keys().size() == 5
+        && data.id is string
+        && data.name is string && data.name.size() <= 100
+        && data.companyPhone is string && data.companyPhone.size() <= 50
+        && data.mobile is string && data.mobile.size() <= 50
+        && data.lineId is string && data.lineId.size() <= 100;
+    }
+
+    function isValidScheduleItem(data) {
+      return data.keys().hasAll([
+        'id', 'projectId', 'hotspotId', 'code', 'name', 'department',
+        'owner', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted'
+      ])
+        && (data.keys().size() >= 12 && data.keys().size() <= 16)
+        && data.id is string
+        && data.projectId is string
+        && (data.hotspotId == null || data.hotspotId is string)
+        && data.code is string && data.code.size() <= 10
+        && data.name is string && data.name.size() <= 200
+        && data.department is string && data.department.size() <= 100
+        && data.owner is string && data.owner.size() <= 100
+        && data.vendor is string && data.vendor.size() <= 100
+        && (data.contactId == null || data.contactId is string)
+        && data.proofDeadline is string && data.proofDeadline.size() <= 20
+        && data.completionDate is string && data.completionDate.size() <= 20
+        && data.isCompleted is bool
+        && (!data.keys().hasAll(['status']) || (data.status is string && data.status.size() <= 100))
+        && (!data.keys().hasAll(['notes']) || (data.notes is string && data.notes.size() <= 1000))
+        && (!data.keys().hasAll(['attachmentName']) || (data.attachmentName is string && data.attachmentName.size() <= 1000))
+        && (!data.keys().hasAll(['attachmentUrl']) || (data.attachmentUrl is string && data.attachmentUrl.size() <= 10000000));
+    }
+
+    function isValidOptionLibrary(data) {
+      return data.keys().hasAll(['departments', 'owners', 'vendors', 'statuses'])
+        && data.keys().size() == 4
+        && data.departments is list
+        && data.owners is list
+        && data.vendors is list
+        && data.statuses is list;
+    }
+
+    function isValidHistoryLog(data) {
+      return data.keys().hasAll(['id', 'projectId', 'timestamp', 'userName', 'actionType', 'entityType', 'description'])
+        && data.id is string
+        && data.projectId is string
+        && data.timestamp is int
+        && data.userName is string && data.userName.size() <= 100
+        && data.actionType is string && (data.actionType == 'create' || data.actionType == 'update' || data.actionType == 'delete' || data.actionType == 'restore')
+        && data.entityType is string
+        && data.description is string && data.description.size() <= 1000;
+    }
+  }
+}

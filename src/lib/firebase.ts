@@ -1,0 +1,134 @@
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDocFromServer, 
+  onSnapshot, 
+  setDoc, 
+  deleteDoc,
+  collectionGroup,
+  query,
+  where,
+  getDocs
+} from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
+import { Project, Hotspot, Contact, ScheduleItem, HistoryLog } from '../types';
+
+// Check if firebase config is populated
+const isFirebaseConfigured = !!(firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "");
+
+let app: any = null;
+let db: any = null;
+let auth: any = null;
+
+if (isFirebaseConfigured) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    auth = getAuth(app);
+    
+    // Sign in anonymously to support "No Login co-editing" securely
+    signInAnonymously(auth).catch((error) => {
+      console.warn("Firebase Anonymous Auth failed:", error);
+    });
+
+    // Test connection as required by constraint
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+  } catch (err) {
+    console.error("Firebase Initialization failed:", err);
+  }
+}
+
+export { app, db, auth, isFirebaseConfigured };
+
+// Standard Firestore Error wrapping schema as required by Phase 3 of the Firebase Integration Skill
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const currentAuth = auth;
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: currentAuth?.currentUser?.uid || null,
+      email: currentAuth?.currentUser?.email || null,
+      emailVerified: currentAuth?.currentUser?.emailVerified || null,
+      isAnonymous: currentAuth?.currentUser?.isAnonymous || null,
+      tenantId: currentAuth?.currentUser?.tenantId || null,
+      providerInfo: currentAuth?.currentUser?.providerData?.map((provider: any) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Multi-Tab Local Sync via BroadcastChannel (Works in standard browser previews instantly!)
+const SYNC_CHANNEL_NAME = 'shenghong_70_sync_channel';
+let broadcastChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    broadcastChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+  }
+} catch (e) {
+  console.warn("BroadcastChannel not supported in this environment:", e);
+}
+
+export function broadcastLocalUpdate(type: string, payload: any) {
+  if (broadcastChannel) {
+    try {
+      broadcastChannel.postMessage({ type, payload, sender: window.name || 'tab_self' });
+    } catch (err) {
+      // Ignore broadcast errors
+    }
+  }
+}
+
+export function listenToLocalUpdates(onUpdate: (type: string, payload: any) => void) {
+  if (broadcastChannel) {
+    const handler = (event: MessageEvent) => {
+      onUpdate(event.data.type, event.data.payload);
+    };
+    broadcastChannel.addEventListener('message', handler);
+    return () => broadcastChannel?.removeEventListener('message', handler);
+  }
+  return () => {};
+}
