@@ -127,7 +127,16 @@ export default function App() {
 
   // Monitor Auth state changes to prevent permission-denied errors on startup race condition
   useEffect(() => {
-    setIsAuthReady(true);
+    if (!isFirebaseConfigured || !auth) {
+      setIsAuthReady(true);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthReady(true);
+      }
+    });
+    return () => unsubscribe();
   }, []);
   
   // Active editing user/unit for co-editing attribution
@@ -1458,7 +1467,7 @@ export default function App() {
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* Column A: Interactive Hotspot Map (7 cols) */}
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-7 h-[580px]">
                 <ImageHotspotMapper
                   hotspots={activeHotspots}
                   projectImageSrc={activeProject.imageSrc}
@@ -1473,27 +1482,27 @@ export default function App() {
                 />
               </div>
 
-              {/* Column B: Executive Summary & Project Stats Widget (4 cols) */}
-              <div className="lg:col-span-4 bg-white rounded-xl border border-line shadow-2xs p-5 font-sans space-y-5">
-                <div className="border-b border-line pb-3">
-                  <span className="text-[10px] bg-seesaw-green-light text-wood-dark border border-wood-light/20 px-2.5 py-0.5 rounded font-bold tracking-widest uppercase">勝宏 70週年重要提示</span>
-                  <h3 className="font-bold text-sm text-wood-dark mt-2">進度決策與跨部門協作</h3>
-                  <p className="text-xs text-stone-500 mt-1">
+              {/* Column B: Executive Summary & Project Stats Widget (5 cols) */}
+              <div className="lg:col-span-5 bg-white rounded-xl border border-line shadow-sm p-6 font-sans space-y-6 h-[580px]">
+                <div className="border-b border-line pb-4">
+                  <span className="text-[10px] bg-seesaw-green-light text-wood-dark border border-wood-light/20 px-3 py-1 rounded font-bold tracking-widest uppercase">勝宏 70週年重要提示</span>
+                  <h3 className="font-semibold text-base text-wood-dark mt-3">進度決策與跨部門協作</h3>
+                  <p className="text-sm text-stone-600 mt-2 leading-relaxed">
                     此系統主要用於協調 70週年禮盒的<b>企劃、勝陽、廠務課</b>進度對稿。請隨時確保截止日期與廠商完成時間對齊，以利集團大會如期舉行。
                   </p>
                 </div>
 
                 {/* Progress Bar Widget */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-stone-500">專案總體驗收進度</span>
-                    <span className="font-mono font-bold text-seesaw-orange">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-semibold text-stone-600">專案總體驗收進度</span>
+                    <span className="font-mono font-bold text-seesaw-orange text-base">
                       {activeItems.length > 0 
                         ? Math.round((activeItems.filter(i => i.isCompleted).length / activeItems.length) * 100) 
                         : 0}%
                     </span>
                   </div>
-                  <div className="w-full h-2.5 bg-seesaw-yellow rounded-full overflow-hidden">
+                  <div className="w-full h-3 bg-stone-100 rounded-full overflow-hidden border border-stone-200">
                     <div 
                       className="h-full bg-seesaw-orange transition-all duration-500"
                       style={{ 
@@ -1503,15 +1512,15 @@ export default function App() {
                       }}
                     />
                   </div>
-                  <p className="text-[10px] text-stone-400">
+                  <p className="text-xs text-stone-500">
                     目前已交付 {activeItems.filter(i => i.isCompleted).length} / {activeItems.length} 項結構及包裝。
                   </p>
                 </div>
 
                 {/* Quick instructions details list */}
-                <div className="space-y-2 text-xs">
-                  <span className="font-bold text-wood-dark block text-[11px]">💡 作業指導口訣：</span>
-                  <ul className="list-decimal list-inside space-y-1 text-stone-600">
+                <div className="space-y-3 text-sm">
+                  <span className="font-bold text-wood-dark block">💡 作業指導口訣：</span>
+                  <ul className="list-decimal list-inside space-y-2 text-stone-700 pl-1">
                     <li>先點擊<b>上方示意圖</b>新增對應結構的「專屬編號 (如 A1)」。</li>
                     <li>下方表格會自動連動，即可填寫<b>負責人、截止日期</b>。</li>
                     <li>完成時勾選最左側核取方塊，表格資訊自動淡化。</li>
@@ -1520,21 +1529,21 @@ export default function App() {
                 </div>
 
                 {/* Relocated Buttons */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-line">
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-line">
                   <button
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    className="flex items-center gap-1.5 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-2 rounded text-xs transition-all cursor-pointer font-medium"
                     title="查看操作歷史紀錄與刪除復原"
                   >
-                    <History className="w-3 h-3" />
+                    <History className="w-3.5 h-3.5" />
                     <span>變更歷程</span>
                   </button>
                   <button
                     onClick={handleExportBackup}
-                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    className="flex items-center gap-1.5 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-2 rounded text-xs transition-all cursor-pointer font-medium"
                     title="匯出整站資料備份 (.json)"
                   >
-                    <Database className="w-3 h-3" />
+                    <Database className="w-3.5 h-3.5" />
                     <span>備份資料</span>
                   </button>
                   <label

@@ -306,7 +306,7 @@ export default function ImageHotspotMapper({
   };
 
   return (
-    <div id="image-hotspot-mapper-card" className="bg-white rounded-xl border border-line shadow-md overflow-hidden font-sans text-text-main">
+    <div id="image-hotspot-mapper-card" className="bg-white rounded-xl border border-line shadow-md overflow-hidden font-sans text-text-main h-full flex flex-col">
       {/* Title block */}
       <div className="bg-[#FAF9F6] border-b px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 flex-shrink-0" style={{ borderColor: '#6c7072' }}>
         <div>
@@ -345,7 +345,7 @@ export default function ImageHotspotMapper({
             點擊或拖曳標註點定位；滑鼠拖曳背景可移動畫面，支援滑動調整放大縮小。
           </p>
           <p className="text-xs text-wood-dark font-medium mt-0.5">
-            (建議上傳尺寸：1200 x 675 像素)
+            (建議上傳尺寸：1200 x 514 像素)
           </p>
         </div>
         
@@ -450,13 +450,13 @@ export default function ImageHotspotMapper({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        className={`relative w-full aspect-[16/9] bg-[#FAF9F6] flex items-center justify-center overflow-hidden select-none border-b border-line ${
+        className={`relative w-full h-full bg-[#FAF9F6] flex items-center justify-center overflow-hidden select-none border-b border-line flex-grow ${
           isDragOver ? 'ring-2 ring-dashed ring-wood-dark bg-wood-light/5' : ''
         }`}
       >
         {/* Inner pan-zoom interactive board canvas wrapper */}
         <div
-          className="relative w-full h-full select-none max-w-4xl mx-auto"
+          className="relative w-full h-full select-none max-w-lg mx-auto"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
