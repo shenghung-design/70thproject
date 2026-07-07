@@ -386,61 +386,7 @@ export default function HeaderBanner({
             )}
           </div>
 
-          {/* Export and History triggers */}
-          <button
-            id="open-history-modal-btn"
-            onClick={onOpenHistory}
-            className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-1.5 rounded-lg transition-all cursor-pointer font-medium shadow-2xs"
-            title="查看操作歷史紀錄與刪除復原"
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>變更歷程</span>
-          </button>
-
-          {onExportBackup && (
-            <button
-              id="export-backup-btn"
-              onClick={onExportBackup}
-              className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-1.5 rounded-lg transition-all cursor-pointer font-medium shadow-2xs"
-              title="匯出整站資料備份 (.json)"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>備份資料</span>
-            </button>
-          )}
-
-          {onImportBackup && (
-            <label
-              id="import-backup-label"
-              className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-1.5 rounded-lg transition-all cursor-pointer font-medium shadow-2xs"
-              title="還原整站資料 (.json)"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>還原資料</span>
-              <input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    onImportBackup(file);
-                    e.target.value = ''; // Clear value to allow re-uploading the same file
-                  }
-                }}
-              />
-            </label>
-          )}
-
-          <button
-            id="export-pdf-excel-btn"
-            onClick={onExport}
-            className="flex items-center gap-1 bg-wood-dark hover:bg-wood-dark/90 text-white font-semibold px-3.5 py-1.5 rounded-lg shadow-xs transition-all cursor-pointer font-medium"
-            title="匯出 PDF 報表或 Excel"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>匯出報表</span>
-          </button>
+          {/* Export and History triggers - REMOVED */}
         </div>
       </div>
 

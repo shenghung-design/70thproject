@@ -431,9 +431,9 @@ export default function ImageHotspotMapper({
             <button
               id="upload-image-btn"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-wood-light text-xs text-wood-dark hover:bg-wood-light/10 transition-colors cursor-pointer bg-white shadow-2xs h-9 font-semibold whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-wood-light text-[10px] text-wood-dark hover:bg-wood-light/10 transition-colors cursor-pointer bg-white shadow-2xs h-7 font-semibold whitespace-nowrap shrink-0"
             >
-              <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+              <Upload className="w-3 h-3 flex-shrink-0" />
               <span>更換圖檔</span>
             </button>
           </div>
@@ -456,7 +456,7 @@ export default function ImageHotspotMapper({
       >
         {/* Inner pan-zoom interactive board canvas wrapper */}
         <div
-          className="relative w-full h-full select-none"
+          className="relative w-full h-full select-none max-w-4xl mx-auto"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',

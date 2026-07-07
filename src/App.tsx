@@ -20,6 +20,7 @@ import OptionLibraryModal from './components/OptionLibraryModal';
 import AuditHistoryModal from './components/AuditHistoryModal';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { History, Database, Upload, Download } from 'lucide-react';
 
 import { 
   isFirebaseConfigured, 
@@ -1516,6 +1517,53 @@ export default function App() {
                     <li>完成時勾選最左側核取方塊，表格資訊自動淡化。</li>
                     <li>點擊<b>右上角「變更歷程」</b>，可一鍵恢復誤刪的項目。</li>
                   </ul>
+                </div>
+
+                {/* Relocated Buttons */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-line">
+                  <button
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    title="查看操作歷史紀錄與刪除復原"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>變更歷程</span>
+                  </button>
+                  <button
+                    onClick={handleExportBackup}
+                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    title="匯出整站資料備份 (.json)"
+                  >
+                    <Database className="w-3 h-3" />
+                    <span>備份資料</span>
+                  </button>
+                  <label
+                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    title="還原整站資料 (.json)"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>還原資料</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImportBackup(file);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                  <button
+                    onClick={handleExportData}
+                    className="flex items-center gap-1 bg-wood-dark hover:bg-wood-dark/95 text-white font-semibold px-2 py-1 rounded text-[10px] transition-all cursor-pointer"
+                    title="匯出 PDF 報表或 Excel"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>匯出報表</span>
+                  </button>
                 </div>
 
                 {/* Wood tone footer signature seal */}
