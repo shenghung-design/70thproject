@@ -12,7 +12,6 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Project, Hotspot, Contact, ScheduleItem, HistoryLog } from '../types';
 
@@ -21,19 +20,12 @@ const isFirebaseConfigured = !!(firebaseConfig && firebaseConfig.apiKey && fireb
 
 let app: any = null;
 let db: any = null;
-let auth: any = null;
 
 if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
-    auth = getAuth(app);
     
-    // Sign in anonymously to support "No Login co-editing" securely
-    signInAnonymously(auth).catch((error) => {
-      console.warn("Firebase Anonymous Auth failed:", error);
-    });
-
     // Test connection as required by constraint
     const testConnection = async () => {
       try {
@@ -70,7 +62,7 @@ export function sanitizeForFirestore<T>(obj: T): T {
   return result;
 }
 
-export { app, db, auth, isFirebaseConfigured };
+export { app, db, isFirebaseConfigured };
 
 // Standard Firestore Error wrapping schema as required by Phase 3 of the Firebase Integration Skill
 export enum OperationType {
@@ -86,34 +78,11 @@ export interface FirestoreErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  }
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const currentAuth = auth;
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: currentAuth?.currentUser?.uid || null,
-      email: currentAuth?.currentUser?.email || null,
-      emailVerified: currentAuth?.currentUser?.emailVerified || null,
-      isAnonymous: currentAuth?.currentUser?.isAnonymous || null,
-      tenantId: currentAuth?.currentUser?.tenantId || null,
-      providerInfo: currentAuth?.currentUser?.providerData?.map((provider: any) => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
     operationType,
     path
   };

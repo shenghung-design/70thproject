@@ -25,7 +25,6 @@ import { History, Database, Upload, Download } from 'lucide-react';
 import { 
   isFirebaseConfigured, 
   db, 
-  auth,
   broadcastLocalUpdate, 
   listenToLocalUpdates,
   OperationType,
@@ -33,7 +32,6 @@ import {
   sanitizeForFirestore
 } from './lib/firebase';
 
-import { onAuthStateChanged } from 'firebase/auth';
 
 import { 
   onSnapshot, 
@@ -122,22 +120,8 @@ export default function App() {
   const [statuses, setStatuses] = useState<string[]>(DEFAULT_STATUSES);
   const [designers, setDesigners] = useState<string[]>(DEFAULT_DESIGNERS);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(true);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
-
-  // Monitor Auth state changes to prevent permission-denied errors on startup race condition
-  useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setIsAuthReady(true);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthReady(true);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
   
   // Active editing user/unit for co-editing attribution
   const [currentUserUnit, setCurrentUserUnit] = useState<string>(() => {
@@ -518,7 +502,7 @@ export default function App() {
     }
 
     // 2. Perform safe Firestore mutations in background if active
-    if (isFirebaseConfigured && db && isAuthReady && auth?.currentUser && firestoreOperations) {
+    if (isFirebaseConfigured && db && isAuthReady && firestoreOperations) {
       try {
         await firestoreOperations();
       } catch (err) {
