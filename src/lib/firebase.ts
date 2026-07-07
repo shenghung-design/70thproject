@@ -12,7 +12,7 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Project, Hotspot, Contact, ScheduleItem, HistoryLog } from '../types';
 
@@ -29,11 +29,6 @@ if (isFirebaseConfigured) {
     db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
     auth = getAuth(app);
     
-    // Sign in anonymously to support "No Login co-editing" securely
-    signInAnonymously(auth).catch((error) => {
-      console.warn("Firebase Anonymous Auth failed:", error);
-    });
-
     // Test connection as required by constraint
     const testConnection = async () => {
       try {

@@ -126,16 +126,7 @@ export default function App() {
 
   // Monitor Auth state changes to prevent permission-denied errors on startup race condition
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setIsAuthReady(true);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthReady(true);
-      }
-    });
-    return () => unsubscribe();
+    setIsAuthReady(true);
   }, []);
   
   // Active editing user/unit for co-editing attribution
@@ -295,9 +286,9 @@ export default function App() {
 
   // --- Firestore Real-time Multi-Device synchronization listener ---
   useEffect(() => {
-    if (!isFirebaseConfigured || !db || !isAuthReady) return;
+    if (!isFirebaseConfigured || !db) return;
 
-    console.log("Initializing Firestore listeners.");
+    console.log("強制啟動 Firestore 實時同步監聽...");
 
     // 1. Sync projects (and seed default data if database is empty)
     const unsubProjects = onSnapshot(collection(db, 'projects'), async (snapshot) => {
@@ -463,7 +454,7 @@ export default function App() {
       unsubOptions();
       unsubLogs();
     };
-  }, [isFirebaseConfigured, isAuthReady]);
+  }, [db]);
 
   // --- Abstract State Mutation Wrapper (Syncs both locally & to Cloud Firestore) ---
   const saveStateAndSync = async (
