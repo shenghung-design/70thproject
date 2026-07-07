@@ -194,6 +194,38 @@ export default function ScheduleGrid({
   });
 
   // --- Gantt Chart Data Preparation ---
+  
+  // Define color mapping for departments/vendors
+  const getEntityColor = (name: string) => {
+    const colors = [
+      { bg: 'bg-amber-200', text: 'text-amber-800' },
+      { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      { bg: 'bg-indigo-200', text: 'text-indigo-800' },
+      { bg: 'bg-rose-200', text: 'text-rose-800' },
+      { bg: 'bg-sky-200', text: 'text-sky-800' },
+      { bg: 'bg-purple-200', text: 'text-purple-800' },
+      { bg: 'bg-teal-200', text: 'text-teal-800' },
+      { bg: 'bg-orange-200', text: 'text-orange-800' },
+      { bg: 'bg-blue-200', text: 'text-blue-800' },
+      { bg: 'bg-green-200', text: 'text-green-800' },
+      { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      { bg: 'bg-red-200', text: 'text-red-800' },
+      { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+      { bg: 'bg-fuchsia-200', text: 'text-fuchsia-800' },
+      { bg: 'bg-violet-200', text: 'text-violet-800' },
+      { bg: 'bg-pink-200', text: 'text-pink-800' },
+      { bg: 'bg-slate-200', text: 'text-slate-800' },
+      { bg: 'bg-zinc-200', text: 'text-zinc-800' },
+      { bg: 'bg-stone-200', text: 'text-stone-800' },
+      { bg: 'bg-lime-200', text: 'text-lime-800' },
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const ganttData = items
     .filter(item => item.proofDeadline || item.completionDate)
     .map(item => {
@@ -223,7 +255,9 @@ export default function ScheduleGrid({
         range: [finalStart, finalEnd],
         isCompleted: item.isCompleted,
         owner: item.owner || '無',
-        department: item.department || '無'
+        department: item.department || '無',
+        vendor: item.vendor || '無',
+        color: getEntityColor(item.department || item.vendor || '無')
       };
     })
     .sort((a, b) => a.startValue - b.startValue);
@@ -705,9 +739,9 @@ export default function ScheduleGrid({
                                 onUpdateItem(item.id, 'department', e.target.value);
                               }
                             }}
-                            className={`bg-stone-50 hover:bg-white focus:bg-white focus:outline-none border border-stone-200 focus:border-wood-dark px-1.5 py-1 text-xs rounded-md w-full font-medium transition-all pr-7 ${
+                            className={`hover:bg-white focus:bg-white focus:outline-none border border-stone-200 focus:border-wood-dark px-1.5 py-1 text-xs rounded-md w-full font-medium transition-all pr-7 ${
                               item.isCompleted ? 'text-text-main/40' : 'text-text-main'
-                            } cursor-pointer`}
+                            } cursor-pointer ${item.department ? getEntityColor(item.department).bg.replace('bg-', 'bg-opacity-20 bg-') : 'bg-stone-50'}`}
                           >
                             <option value="">選擇設計單位...</option>
                             {departments.map((dept) => (
@@ -751,9 +785,9 @@ export default function ScheduleGrid({
                                 onUpdateItem(item.id, 'vendor', e.target.value);
                               }
                             }}
-                            className={`bg-stone-50 hover:bg-white focus:bg-white focus:outline-none border border-stone-200 focus:border-wood-dark px-1.5 py-1 text-xs rounded-md w-full font-medium transition-all pr-7 ${
+                            className={`hover:bg-white focus:bg-white focus:outline-none border border-stone-200 focus:border-wood-dark px-1.5 py-1 text-xs rounded-md w-full font-medium transition-all pr-7 ${
                               item.isCompleted ? 'text-text-main/40' : 'text-text-main'
-                            } cursor-pointer`}
+                            } cursor-pointer ${item.vendor ? getEntityColor(item.vendor).bg.replace('bg-', 'bg-opacity-20 bg-') : 'bg-stone-50'}`}
                           >
                             <option value="">選擇廠商...</option>
                             {vendors.map((vendor) => (
@@ -1252,6 +1286,13 @@ export default function ScheduleGrid({
                     stroke="#78716c"
                     fontSize={10}
                     tickLine={false}
+                    tick={({ x, y, payload }) => {
+                      return (
+                        <text x={x - 5} y={y + 4} fontSize="12" fill="#78716c" textAnchor="end">
+                          {payload.value.length > 15 ? payload.value.substring(0, 15) + '...' : payload.value}
+                        </text>
+                      );
+                    }}
                   />
                   <Tooltip 
                     content={({ active, payload }) => {
@@ -1288,7 +1329,7 @@ export default function ScheduleGrid({
                     {ganttData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
-                        fill={entry.isCompleted ? '#D1D5DB' : '#e1b103'} 
+                        fill={entry.isCompleted ? '#D1D5DB' : '#e1b103'}
                         className="cursor-pointer hover:opacity-80 transition-all"
                       />
                     ))}
