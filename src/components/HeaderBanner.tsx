@@ -121,6 +121,21 @@ export default function HeaderBanner({
         {/* Live Status and Shared controls */}
         <div className="flex items-center gap-4 text-xs flex-wrap">
 
+          {/* Firebase Sync Connection Status Badge */}
+          <div className="flex items-center">
+            {isFirebaseSynced ? (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 shadow-2xs">
+                <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                <span>雲端同步已連線</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 shadow-2xs">
+                <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+                <span>本地離線暫存</span>
+              </span>
+            )}
+          </div>
+
           {/* Active Users Avatars with Dropdown Selector */}
           <div className="relative">
             <button

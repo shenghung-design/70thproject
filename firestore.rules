@@ -21,7 +21,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data);
       allow update: if isSignedIn() && isValidProject(request.resource.data) && (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'imageSrc', 'templateType'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'imageSrc', 'templateType', 'diagramName'])
       );
       allow delete: if isSignedIn();
 
@@ -41,7 +41,7 @@ service cloud.firestore {
         allow create: if isSignedIn() && isValidId(itemId) && isValidScheduleItem(request.resource.data) && request.resource.data.projectId == projectId;
         allow update: if isSignedIn() && isValidScheduleItem(request.resource.data) && (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'code', 'name', 'department', 'owner', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted', 'status'
+            'code', 'name', 'department', 'owner', 'designer', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted', 'status', 'notes', 'attachmentName', 'attachmentUrl'
           ])
         );
         allow delete: if isSignedIn();
@@ -75,12 +75,13 @@ service cloud.firestore {
     // Entity validation helpers
     function isValidProject(data) {
       return data.keys().hasAll(['id', 'name', 'imageSrc', 'createdAt'])
-        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAll(['templateType'])))
+        && data.keys().size() >= 4 && data.keys().size() <= 6
         && data.id is string
         && data.name is string && data.name.size() <= 200
         && data.imageSrc is string && data.imageSrc.size() <= 10000000
         && data.createdAt is int
-        && (!data.keys().hasAll(['templateType']) || (data.templateType is string && (data.templateType == 'diagram' || data.templateType == 'checklist')));
+        && (!data.keys().hasAll(['templateType']) || (data.templateType is string && (data.templateType == 'diagram' || data.templateType == 'checklist')))
+        && (!data.keys().hasAll(['diagramName']) || (data.diagramName is string && data.diagramName.size() <= 200));
     }
 
     function isValidHotspot(data) {
@@ -107,9 +108,9 @@ service cloud.firestore {
     function isValidScheduleItem(data) {
       return data.keys().hasAll([
         'id', 'projectId', 'hotspotId', 'code', 'name', 'department',
-        'owner', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted'
+        'owner', 'designer', 'vendor', 'contactId', 'proofDeadline', 'completionDate', 'isCompleted'
       ])
-        && (data.keys().size() >= 12 && data.keys().size() <= 16)
+        && (data.keys().size() >= 12 && data.keys().size() <= 17)
         && data.id is string
         && data.projectId is string
         && (data.hotspotId == null || data.hotspotId is string)
@@ -117,6 +118,7 @@ service cloud.firestore {
         && data.name is string && data.name.size() <= 200
         && data.department is string && data.department.size() <= 100
         && data.owner is string && data.owner.size() <= 100
+        && (!data.keys().hasAll(['designer']) || (data.designer is string && data.designer.size() <= 100))
         && data.vendor is string && data.vendor.size() <= 100
         && (data.contactId == null || data.contactId is string)
         && data.proofDeadline is string && data.proofDeadline.size() <= 20
@@ -129,12 +131,13 @@ service cloud.firestore {
     }
 
     function isValidOptionLibrary(data) {
-      return data.keys().hasAll(['departments', 'owners', 'vendors', 'statuses'])
-        && data.keys().size() == 4
+      return data.keys().hasAll(['departments', 'owners', 'vendors', 'statuses', 'designers'])
+        && data.keys().size() == 5
         && data.departments is list
         && data.owners is list
         && data.vendors is list
-        && data.statuses is list;
+        && data.statuses is list
+        && data.designers is list;
     }
 
     function isValidHistoryLog(data) {

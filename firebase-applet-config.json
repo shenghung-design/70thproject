@@ -1,9 +1,10 @@
 {
-  "apiKey": "",
-  "authDomain": "",
-  "projectId": "",
-  "storageBucket": "",
-  "messagingSenderId": "",
-  "appId": "",
-  "firestoreDatabaseId": ""
+  "projectId": "vivid-destiny-8n50x",
+  "appId": "1:144121718550:web:01229eac5e4ab23b091237",
+  "apiKey": "AIzaSyCm-Nwn8LEtBD1g76ahPtQAGpofzj_cSo0",
+  "authDomain": "vivid-destiny-8n50x.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-remix70-31a3d15b-c0a7-43f0-a7c6-0a2e09601522",
+  "storageBucket": "vivid-destiny-8n50x.firebasestorage.app",
+  "messagingSenderId": "144121718550",
+  "measurementId": ""
 }

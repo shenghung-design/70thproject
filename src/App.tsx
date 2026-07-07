@@ -28,7 +28,8 @@ import {
   broadcastLocalUpdate, 
   listenToLocalUpdates,
   OperationType,
-  handleFirestoreError
+  handleFirestoreError,
+  sanitizeForFirestore
 } from './lib/firebase';
 
 import { onAuthStateChanged } from 'firebase/auth';
@@ -58,6 +59,55 @@ const safeSetLocalStorage = (key: string, value: string) => {
   }
 };
 
+// Robust helper to compress high-res/PNG images to under 800KB jpeg before sending to Firestore
+const compressBase64IfNeeded = (base64: string, maxBytes: number = 750 * 1024): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!base64 || !base64.startsWith('data:image/') || base64.length < maxBytes) {
+      resolve(base64);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1000;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(base64);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        // Compress as jpeg with 0.65 quality to guarantee it's under 800KB
+        const compressed = canvas.toDataURL('image/jpeg', 0.65);
+        resolve(compressed);
+      } catch (err) {
+        console.warn('Compression failed, using original', err);
+        resolve(base64);
+      }
+    };
+    img.onerror = () => {
+      resolve(base64);
+    };
+    img.src = base64;
+  });
+};
+
 export default function App() {
   // --- Core Application State ---
   const [projects, setProjects] = useState<Project[]>([]);
@@ -72,6 +122,7 @@ export default function App() {
   const [designers, setDesigners] = useState<string[]>(DEFAULT_DESIGNERS);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
 
   // Monitor Auth state changes to prevent permission-denied errors on startup race condition
   useEffect(() => {
@@ -246,22 +297,70 @@ export default function App() {
   useEffect(() => {
     if (!isFirebaseConfigured || !db || !isAuthReady) return;
 
-    // 1. Sync projects
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
-      const projs: Project[] = [];
-      snapshot.forEach((doc) => {
-        projs.push(doc.data() as Project);
-      });
-      if (projs.length > 0) {
+    console.log("Initializing Firestore listeners.");
+
+    // 1. Sync projects (and seed default data if database is empty)
+    const unsubProjects = onSnapshot(collection(db, 'projects'), async (snapshot) => {
+      setIsFirebaseConnected(true);
+      console.log("Firestore projects snapshot received. Count:", snapshot.size);
+
+      if (snapshot.empty) {
+        console.log("Firestore database is empty. Seeding default data...");
+        try {
+          const batch = writeBatch(db!);
+          
+          // Seed projects
+          DEFAULT_PROJECTS.forEach(p => {
+            batch.set(doc(db!, 'projects', p.id), sanitizeForFirestore(p));
+          });
+          
+          // Seed hotspots
+          DEFAULT_HOTSPOTS.forEach(h => {
+            batch.set(doc(db!, 'projects', h.projectId, 'hotspots', h.id), sanitizeForFirestore(h));
+          });
+          
+          // Seed schedule items
+          DEFAULT_SCHEDULE_ITEMS.forEach(item => {
+            batch.set(doc(db!, 'projects', item.projectId, 'items', item.id), sanitizeForFirestore(item));
+          });
+          
+          // Seed contacts
+          DEFAULT_CONTACTS.forEach(c => {
+            batch.set(doc(db!, 'contacts', c.id), sanitizeForFirestore(c));
+          });
+          
+          // Seed options library
+          const initialOptions = {
+            departments: DEFAULT_DEPARTMENTS,
+            owners: DEFAULT_OWNERS,
+            vendors: DEFAULT_VENDORS,
+            statuses: DEFAULT_STATUSES,
+            designers: DEFAULT_DESIGNERS
+          };
+          batch.set(doc(db!, 'options', 'library'), sanitizeForFirestore(initialOptions));
+          
+          await batch.commit();
+          console.log("Firestore default data seeded successfully.");
+        } catch (err) {
+          console.error("Failed to seed default data:", err);
+        }
+      } else {
+        const projs: Project[] = [];
+        snapshot.forEach((doc) => {
+          projs.push(doc.data() as Project);
+        });
         setProjects(projs.sort((a, b) => a.createdAt - b.createdAt));
         safeSetLocalStorage('sh_projects', JSON.stringify(projs));
       }
     }, (error) => {
+      console.error("Firestore projects stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'projects');
     });
 
     // 2. Sync all hotspots dynamically across all projects
     const unsubHotspots = onSnapshot(collectionGroup(db, 'hotspots'), (snapshot) => {
+      setIsFirebaseConnected(true);
       const spots: Hotspot[] = [];
       snapshot.forEach((doc) => {
         spots.push(doc.data() as Hotspot);
@@ -269,11 +368,14 @@ export default function App() {
       setHotspots(spots);
       safeSetLocalStorage('sh_hotspots', JSON.stringify(spots));
     }, (error) => {
+      console.error("Firestore hotspots stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'hotspots collectionGroup');
     });
 
     // 3. Sync all schedule items across all projects
     const unsubItems = onSnapshot(collectionGroup(db, 'items'), (snapshot) => {
+      setIsFirebaseConnected(true);
       const items: ScheduleItem[] = [];
       snapshot.forEach((doc) => {
         items.push(doc.data() as ScheduleItem);
@@ -281,11 +383,14 @@ export default function App() {
       setScheduleItems(items);
       safeSetLocalStorage('sh_items', JSON.stringify(items));
     }, (error) => {
+      console.error("Firestore items stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'items collectionGroup');
     });
 
     // 4. Sync contacts list
     const unsubContacts = onSnapshot(collection(db, 'contacts'), (snapshot) => {
+      setIsFirebaseConnected(true);
       const cts: Contact[] = [];
       snapshot.forEach((doc) => {
         cts.push(doc.data() as Contact);
@@ -295,11 +400,14 @@ export default function App() {
         safeSetLocalStorage('sh_contacts', JSON.stringify(cts));
       }
     }, (error) => {
+      console.error("Firestore contacts stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'contacts');
     });
 
     // 5. Sync Option library
     const unsubOptions = onSnapshot(collection(db, 'options'), (snapshot) => {
+      setIsFirebaseConnected(true);
       snapshot.forEach((docSnap) => {
         if (docSnap.id === 'library') {
           const data = docSnap.data() as OptionLibrary;
@@ -326,11 +434,14 @@ export default function App() {
         }
       });
     }, (error) => {
+      console.error("Firestore options stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'options');
     });
 
     // 6. Sync History logs
     const unsubLogs = onSnapshot(collection(db, 'logs'), (snapshot) => {
+      setIsFirebaseConnected(true);
       const logs: HistoryLog[] = [];
       snapshot.forEach((doc) => {
         logs.push(doc.data() as HistoryLog);
@@ -339,6 +450,8 @@ export default function App() {
       setHistoryLogs(sorted);
       safeSetLocalStorage('sh_logs', JSON.stringify(sorted));
     }, (error) => {
+      console.error("Firestore logs stream error:", error);
+      setIsFirebaseConnected(false);
       handleFirestoreError(error, OperationType.GET, 'logs');
     });
 
@@ -404,7 +517,7 @@ export default function App() {
     }
 
     // 2. Perform safe Firestore mutations in background if active
-    if (isFirebaseConfigured && db && firestoreOperations) {
+    if (isFirebaseConfigured && db && isAuthReady && auth?.currentUser && firestoreOperations) {
       try {
         await firestoreOperations();
       } catch (err) {
@@ -428,13 +541,13 @@ export default function App() {
       actionType,
       entityType,
       description,
-      details
+      details: details !== undefined ? details : null
     };
 
     const updatedLogs = [newLog, ...historyLogs];
     saveStateAndSync('LOGS', updatedLogs, async () => {
       try {
-        await setDoc(doc(db, 'logs', newLog.id), newLog);
+        await setDoc(doc(db, 'logs', newLog.id), sanitizeForFirestore(newLog));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `logs/${newLog.id}`);
       }
@@ -454,7 +567,9 @@ export default function App() {
     const updated = [...projects, newProj];
     saveStateAndSync('PROJECTS', updated, async () => {
       try {
-        await setDoc(doc(db, 'projects', newProj.id), newProj);
+        const compressedImg = await compressBase64IfNeeded(newProj.imageSrc || '');
+        const sanitizedProj = sanitizeForFirestore({ ...newProj, imageSrc: compressedImg });
+        await setDoc(doc(db, 'projects', newProj.id), sanitizedProj);
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${newProj.id}`);
       }
@@ -469,7 +584,9 @@ export default function App() {
       try {
         const proj = updated.find(p => p.id === id);
         if (proj) {
-          await setDoc(doc(db, 'projects', id), proj);
+          const compressedImg = await compressBase64IfNeeded(proj.imageSrc || '');
+          const sanitizedProj = sanitizeForFirestore({ ...proj, imageSrc: compressedImg });
+          await setDoc(doc(db, 'projects', id), sanitizedProj);
         }
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${id}`);
@@ -543,7 +660,9 @@ export default function App() {
       try {
         const activeProj = updated.find(p => p.id === activeProjectId);
         if (activeProj) {
-          await setDoc(doc(db, 'projects', activeProjectId), activeProj);
+          const compressedImg = await compressBase64IfNeeded(activeProj.imageSrc || '');
+          const sanitizedProj = sanitizeForFirestore({ ...activeProj, imageSrc: compressedImg });
+          await setDoc(doc(db, 'projects', activeProjectId), sanitizedProj);
         }
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}`);
@@ -559,7 +678,9 @@ export default function App() {
       try {
         const proj = updated.find(p => p.id === id);
         if (proj) {
-          await setDoc(doc(db, 'projects', id), proj);
+          const compressedImg = await compressBase64IfNeeded(proj.imageSrc || '');
+          const sanitizedProj = sanitizeForFirestore({ ...proj, imageSrc: compressedImg });
+          await setDoc(doc(db, 'projects', id), sanitizedProj);
         }
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${id}`);
@@ -608,7 +729,7 @@ export default function App() {
 
     saveStateAndSync('HOTSPOTS', updatedHotspots, async () => {
       try {
-        await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), newHotspot);
+        await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), sanitizeForFirestore(newHotspot));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/hotspots/${hotspotId}`);
       }
@@ -616,7 +737,7 @@ export default function App() {
 
     saveStateAndSync('ITEMS', updatedItems, async () => {
       try {
-        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), newScheduleItem);
+        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), sanitizeForFirestore(newScheduleItem));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/items/${itemId}`);
       }
@@ -638,11 +759,11 @@ export default function App() {
 
     saveStateAndSync('HOTSPOTS', updatedHotspots, async () => {
       try {
-        await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), {
+        await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), sanitizeForFirestore({
           ...spotToUpdate,
           code: updatedCode,
           name: updatedName
-        });
+        }));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/hotspots/${hotspotId}`);
       }
@@ -652,7 +773,7 @@ export default function App() {
       try {
         const itemToUpdate = updatedItems.find(i => i.hotspotId === hotspotId);
         if (itemToUpdate) {
-          await setDoc(doc(db, 'projects', activeProjectId, 'items', itemToUpdate.id), itemToUpdate);
+          await setDoc(doc(db, 'projects', activeProjectId, 'items', itemToUpdate.id), sanitizeForFirestore(itemToUpdate));
         }
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/items/item_${hotspotId}`);
@@ -708,7 +829,7 @@ export default function App() {
       try {
         const spot = updatedHotspots.find(h => h.id === hotspotId);
         if (spot) {
-          await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), spot);
+          await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspotId), sanitizeForFirestore(spot));
         }
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/hotspots/${hotspotId}`);
@@ -743,7 +864,7 @@ export default function App() {
     const updated = [...scheduleItems, newItem];
     saveStateAndSync('ITEMS', updated, async () => {
       try {
-        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), newItem);
+        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), sanitizeForFirestore(newItem));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/items/${itemId}`);
       }
@@ -769,10 +890,10 @@ export default function App() {
 
     saveStateAndSync('ITEMS', updated, async () => {
       try {
-        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), {
+        await setDoc(doc(db, 'projects', activeProjectId, 'items', itemId), sanitizeForFirestore({
           ...itemToUpdate,
           ...updatedFields
-        });
+        }));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/items/${itemId}`);
       }
@@ -836,7 +957,7 @@ export default function App() {
       const updatedHotspots = [...hotspots, hotspot];
       saveStateAndSync('HOTSPOTS', updatedHotspots, async () => {
         try {
-          await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspot.id), hotspot);
+          await setDoc(doc(db, 'projects', activeProjectId, 'hotspots', hotspot.id), sanitizeForFirestore(hotspot));
         } catch (e) {
           handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/hotspots/${hotspot.id}`);
         }
@@ -847,7 +968,7 @@ export default function App() {
       const updatedItems = [...scheduleItems, item];
       saveStateAndSync('ITEMS', updatedItems, async () => {
         try {
-          await setDoc(doc(db, 'projects', activeProjectId, 'items', item.id), item);
+          await setDoc(doc(db, 'projects', activeProjectId, 'items', item.id), sanitizeForFirestore(item));
         } catch (e) {
           handleFirestoreError(e, OperationType.WRITE, `projects/${activeProjectId}/items/${item.id}`);
         }
@@ -860,7 +981,7 @@ export default function App() {
     );
     saveStateAndSync('LOGS', updatedLogs, async () => {
       try {
-        await setDoc(doc(db, 'logs', log.id), { ...log, actionType: 'restore' });
+        await setDoc(doc(db, 'logs', log.id), sanitizeForFirestore({ ...log, actionType: 'restore' }));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `logs/${log.id}`);
       }
@@ -886,7 +1007,7 @@ export default function App() {
 
     saveStateAndSync('OPTIONS', payload, async () => {
       try {
-        await setDoc(doc(db, 'options', 'library'), payload);
+        await setDoc(doc(db, 'options', 'library'), sanitizeForFirestore(payload));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, 'options/library');
       }
@@ -938,7 +1059,7 @@ export default function App() {
 
     saveStateAndSync('CONTACTS', updatedContacts, async () => {
       try {
-        await setDoc(doc(db, 'contacts', updatedContact.id), updatedContact);
+        await setDoc(doc(db, 'contacts', updatedContact.id), sanitizeForFirestore(updatedContact));
       } catch (e) {
         handleFirestoreError(e, OperationType.WRITE, `contacts/${updatedContact.id}`);
       }
@@ -1284,7 +1405,7 @@ export default function App() {
         onAddProject={handleAddProject}
         onRenameProject={handleRenameProject}
         onDeleteProject={handleDeleteProject}
-        isFirebaseSynced={isFirebaseConfigured}
+        isFirebaseSynced={isFirebaseConnected}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         onExport={handleExportData}
         currentUserUnit={currentUserUnit}

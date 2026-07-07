@@ -26,7 +26,7 @@ let auth: any = null;
 if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
-    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
     auth = getAuth(app);
     
     // Sign in anonymously to support "No Login co-editing" securely
@@ -48,6 +48,26 @@ if (isFirebaseConfigured) {
   } catch (err) {
     console.error("Firebase Initialization failed:", err);
   }
+}
+
+export function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === undefined) {
+    return null as any;
+  }
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore) as any;
+  }
+  const result: any = {};
+  for (const key of Object.keys(obj as any)) {
+    const val = (obj as any)[key];
+    if (val !== undefined) {
+      result[key] = sanitizeForFirestore(val);
+    }
+  }
+  return result;
 }
 
 export { app, db, auth, isFirebaseConfigured };
