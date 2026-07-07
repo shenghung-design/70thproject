@@ -40,7 +40,7 @@ export const DEFAULT_CONTACTS: Contact[] = [
 export const DEFAULT_PROJECTS: Project[] = [
   {
     id: 'project_70th_box',
-    name: '🎉 勝宏 70週年禮盒',
+    name: '勝宏 70週年禮盒',
     imageSrc: '', // Will be resolved dynamically to our generated image or fallback SVG
     createdAt: 1783042541676
   }

@@ -543,9 +543,10 @@ export default function App() {
   const handleAddProject = (name: string, templateType: 'diagram' | 'checklist') => {
     const newProj: Project = {
       id: 'project_' + generateUUID(),
-      name: `🎉 ${name}`,
-      imageSrc: '', // Defaults to paulownia wooden box schematic
+      name: name,
+      imageSrc: '',
       templateType,
+      diagramName: '',
       createdAt: Date.now()
     };
 
@@ -1456,7 +1457,7 @@ export default function App() {
                   hotspots={activeHotspots}
                   projectImageSrc={activeProject.imageSrc}
                   projectId={activeProject.id}
-                  diagramName={activeProject.diagramName || '勝宏禮盒外觀立體示意圖'}
+                  diagramName={activeProject.diagramName || ''}
                   onUpdateDiagramName={(newName) => handleUpdateProjectDiagramName(activeProject.id, newName)}
                   onAddHotspot={handleAddHotspot}
                   onEditHotspot={handleEditHotspot}
@@ -1531,10 +1532,10 @@ export default function App() {
                     <span>備份資料</span>
                   </button>
                   <label
-                    className="flex items-center gap-1 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-2 py-1 rounded text-[10px] transition-all cursor-pointer font-medium"
+                    className="flex items-center gap-1.5 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-2 rounded text-xs transition-all cursor-pointer font-medium"
                     title="還原整站資料 (.json)"
                   >
-                    <Upload className="w-3 h-3" />
+                    <Upload className="w-3.5 h-3.5" />
                     <span>還原資料</span>
                     <input
                       type="file"
@@ -1551,10 +1552,10 @@ export default function App() {
                   </label>
                   <button
                     onClick={handleExportData}
-                    className="flex items-center gap-1 bg-wood-dark hover:bg-wood-dark/95 text-white font-semibold px-2 py-1 rounded text-[10px] transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 text-[#8B6D53] hover:text-white bg-[#FAF9F6] border border-line hover:bg-[#8B6D53] px-3 py-2 rounded text-xs transition-all cursor-pointer font-medium"
                     title="匯出 PDF 報表或 Excel"
                   >
-                    <Download className="w-3 h-3" />
+                    <Download className="w-3.5 h-3.5" />
                     <span>匯出報表</span>
                   </button>
                 </div>

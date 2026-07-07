@@ -99,7 +99,7 @@ export default function ImageHotspotMapper({
   }, [projectId]);
 
   // Fallback to our generated giftbox schematic if none is present
-  const imageSource = projectImageSrc || giftboxDefaultImage;
+  const imageSource = projectImageSrc;
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (editingHotspot) return; // Ignore if editing
@@ -162,41 +162,7 @@ export default function ImageHotspotMapper({
     reader.onload = (event) => {
       const base64 = event.target?.result;
       if (typeof base64 !== 'string') return;
-
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 675;
-        let width = img.width;
-        let height = img.height;
-
-        // Scale proportionally if dimensions are too large
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
-          onUpdateImage(compressedBase64);
-        } else {
-          onUpdateImage(base64);
-        }
-      };
-      img.src = base64;
+      onUpdateImage(base64);
     };
     reader.readAsDataURL(file);
   };
@@ -328,14 +294,16 @@ export default function ImageHotspotMapper({
             />
           ) : (
             <h2 
-              className="text-base font-bold text-text-main flex items-center gap-2 font-serif cursor-pointer hover:bg-stone-200/50 px-1.5 py-0.5 rounded transition-all select-none border border-transparent hover:border-wood-light/25 group"
+              className={`text-base font-bold flex items-center gap-2 font-serif cursor-pointer hover:bg-stone-200/50 px-1.5 py-0.5 rounded transition-all select-none border border-transparent hover:border-wood-light/25 group ${
+                !diagramName ? "text-stone-400" : "text-text-main"
+              }`}
               onDoubleClick={() => {
                 setIsEditingTitle(true);
-                setTempTitle(diagramName);
+                setTempTitle(diagramName || "");
               }}
               title="雙擊此處可以修改專案圖檔的名稱"
             >
-              <span className="-ml-1.5">{diagramName}</span>
+              <span className="-ml-1.5">{diagramName || "雙點擊新增標題"}</span>
               <span className="text-[10px] text-wood-dark/40 font-sans font-normal opacity-0 group-hover:opacity-100 transition-opacity">
                 (雙擊編輯)
               </span>
@@ -431,9 +399,9 @@ export default function ImageHotspotMapper({
             <button
               id="upload-image-btn"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-wood-light text-[10px] text-wood-dark hover:bg-wood-light/10 transition-colors cursor-pointer bg-white shadow-2xs h-7 font-semibold whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-wood-light text-xs text-wood-dark hover:bg-wood-light/10 transition-colors cursor-pointer bg-white shadow-2xs h-7 font-semibold whitespace-nowrap shrink-0"
             >
-              <Upload className="w-3 h-3 flex-shrink-0" />
+              <Upload className="w-3.5 h-3.5 flex-shrink-0" />
               <span>更換圖檔</span>
             </button>
           </div>
@@ -464,14 +432,24 @@ export default function ImageHotspotMapper({
             cursor: draggedHotspotId ? 'grabbing' : mode === 'pan' ? (isDraggingBoard ? 'grabbing' : 'grab') : 'crosshair'
           }}
         >
-          <img
-            src={imageSource}
-            alt="Gift Box Schematic"
-            referrerPolicy="no-referrer"
-            onClick={handleImageClick}
-            className="w-full h-full object-contain select-none pointer-events-auto"
-            draggable={false}
-          />
+          {imageSource ? (
+            <img
+              src={imageSource}
+              alt="Gift Box Schematic"
+              referrerPolicy="no-referrer"
+              onClick={handleImageClick}
+              className="w-full h-full object-contain select-none pointer-events-auto"
+              draggable={false}
+            />
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 text-wood-dark/50 hover:text-wood-dark transition-colors cursor-pointer w-full h-full"
+            >
+              <Plus className="w-12 h-12" />
+              <span className="text-sm font-semibold">上傳圖檔</span>
+            </button>
+          )}
 
           {/* Hotspot Hot pins */}
           {localHotspots.map((spot) => {
